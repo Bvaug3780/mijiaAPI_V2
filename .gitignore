@@ -1,0 +1,58 @@
+# ==================== Python ====================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+*.whl
+
+# ==================== 虚拟环境 ====================
+.venv/
+venv/
+env/
+ENV/
+
+# ==================== IDE ====================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ==================== OS ====================
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# ==================== 日志 ====================
+*.log
+
+# ==================== 缓存 ====================
+.mypy_cache/
+.pytest_cache/
+.cache/
+*.cache
+
+# ==================== 测试覆盖率 ====================
+.coverage
+htmlcov/
+coverage.xml
+*.cover
+
+# ==================== 米家API数据 ====================
+.mijia/
+credential.json
+*.credential.json
+
+# ==================== 配置文件 ====================
+# 忽略实际使用的配置文件，只提交模板
+configs/default.toml
+configs/*.toml
+!configs/*.toml.template
+
+# ==================== 其他 ====================
+__pypackages__/

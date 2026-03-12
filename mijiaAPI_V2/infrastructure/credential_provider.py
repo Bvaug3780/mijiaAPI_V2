@@ -1,0 +1,509 @@
+"""凭据提供者
+
+负责获取和刷新用户凭据。
+"""
+
+import time
+import uuid
+from datetime import datetime, timedelta
+from typing import Any, Dict
+
+import httpx
+from qrcode.main import QRCode
+
+from mijiaAPI_V2.core.config import ConfigManager
+from mijiaAPI_V2.core.logging import get_logger
+from mijiaAPI_V2.domain.exceptions import LoginFailedError, TokenExpiredError
+from mijiaAPI_V2.domain.models import Credential
+
+logger = get_logger(__name__)
+
+
+class CredentialProvider:
+    """凭据提供者
+
+    负责从米家服务器获取和刷新凭据，独立于业务逻辑。
+    """
+
+    def __init__(self, config: ConfigManager):
+        """初始化凭据提供者
+
+        Args:
+            config: 配置管理器
+        """
+        self._config = config
+        self._client = httpx.Client(timeout=config.get("DEFAULT_TIMEOUT", 30))
+
+    def login_by_qrcode(self) -> Credential:
+        """通过二维码登录获取凭据
+
+        Returns:
+            Credential: 包含用户认证信息的凭据对象
+
+        Raises:
+            LoginFailedError: 登录失败
+        """
+        logger.info("开始二维码登录流程")
+
+        try:
+            # Step 1: 从 serviceLogin 获取登录链接参数
+            location_data = self._get_location()
+            
+            # 如果已经有有效的token，直接返回
+            if location_data.get("code") == 0 and location_data.get("message") == "刷新Token成功":
+                logger.info("Token仍然有效，无需重新登录")
+                # 从现有的auth_data构建凭据
+                # 注意：这里需要确保有完整的凭据信息
+                raise LoginFailedError("请使用已保存的凭据，无需重新登录")
+
+            # Step 2: 获取二维码URL和轮询URL
+            qr_data = self._get_qrcode_data(location_data)
+            self._display_qrcode(qr_data["loginUrl"])
+            print(f"也可以访问链接查看二维码图片: {qr_data['qr']}")
+
+            # Step 3: 长轮询等待扫码
+            login_result = self._long_poll_for_scan(qr_data["lp"])
+
+            # Step 4: 访问callback获取cookies
+            callback_url = login_result["location"]
+            response = self._client.get(callback_url)
+            
+            # 从cookies中提取serviceToken
+            service_token = response.cookies.get("serviceToken")
+            if not service_token:
+                raise LoginFailedError("未能从callback获取serviceToken")
+
+            # Step 5: 构建凭据对象
+            credential = Credential(
+                user_id=str(login_result["userId"]),
+                service_token=service_token,
+                ssecurity=login_result["ssecurity"],
+                c_user_id=str(login_result.get("cUserId", login_result["userId"])),  # cUserId
+                device_id=self._generate_device_id(),
+                user_agent=self._generate_user_agent(),
+                expires_at=self._calculate_expires_at({}),
+            )
+
+            logger.info(f"登录成功，用户ID: {credential.user_id}")
+            return credential
+
+        except LoginFailedError:
+            raise
+        except Exception as e:
+            logger.error(f"二维码登录失败: {e}")
+            raise LoginFailedError(f"二维码登录失败: {e}") from e
+
+    def refresh(self, credential: Credential) -> Credential:
+        """刷新凭据
+
+        Args:
+            credential: 需要刷新的旧凭据对象
+
+        Returns:
+            Credential: 刷新后的新凭据对象
+
+        Raises:
+            TokenExpiredError: 凭据刷新失败
+        """
+        logger.info(f"刷新凭据，用户ID: {credential.user_id}")
+
+        try:
+            # 使用现有的service token刷新
+            new_token_data = self._refresh_service_token(credential.service_token)
+
+            # 创建新的凭据对象
+            new_credential = Credential(
+                user_id=credential.user_id,
+                service_token=new_token_data["serviceToken"],
+                ssecurity=new_token_data["ssecurity"],
+                c_user_id=credential.c_user_id,
+                device_id=credential.device_id,
+                user_agent=credential.user_agent,
+                expires_at=self._calculate_expires_at(new_token_data),
+            )
+
+            logger.info(f"凭据刷新成功，用户ID: {credential.user_id}")
+            return new_credential
+
+        except Exception as e:
+            logger.error(f"凭据刷新失败: {e}")
+            raise TokenExpiredError(f"凭据刷新失败: {e}") from e
+
+    def revoke(self, credential: Credential) -> bool:
+        """撤销凭据
+
+        Args:
+            credential: 要撤销的凭据对象
+
+        Returns:
+            bool: 撤销是否成功
+        """
+        logger.info(f"撤销凭据，用户ID: {credential.user_id}")
+
+        try:
+            # 调用API撤销token
+            url = f"{self._config.get('LOGIN_URL')}/pass/logout"
+            response = self._client.post(
+                url,
+                headers={"User-Agent": credential.user_agent},
+                json={"serviceToken": credential.service_token},
+            )
+
+            if response.status_code == 200:
+                logger.info(f"凭据撤销成功，用户ID: {credential.user_id}")
+                return True
+            else:
+                logger.warning(f"凭据撤销失败，状态码: {response.status_code}")
+                return False
+
+        except Exception as e:
+            logger.error(f"撤销凭据时发生错误: {e}")
+            return False
+
+    def _get_location(self) -> Dict[str, Any]:
+        """获取登录location参数
+
+        Returns:
+            Dict[str, Any]: location参数字典
+
+        Raises:
+            LoginFailedError: 获取失败
+        """
+        try:
+            # 使用米家的sid
+            url = f"{self._config.get('SERVICE_LOGIN_URL')}?_json=true&sid=mijia&_locale=zh_CN"
+            response = self._client.get(url)
+            response.raise_for_status()
+
+            # 解析响应
+            data = response.text.replace("&&&START&&&", "")
+            import json
+
+            result = json.loads(data)
+
+            # 如果code=0，说明已经有有效的token
+            if result.get("code") == 0:
+                return {"code": 0, "message": "刷新Token成功"}
+
+            # 否则返回location参数
+            location = result.get("location", "")
+            if not location:
+                raise LoginFailedError(f"获取location失败: {result.get('desc')}")
+
+            # 解析location中的参数
+            from urllib import parse
+            location_data = parse.parse_qs(parse.urlparse(location).query)
+            return {k: v[0] for k, v in location_data.items()}
+
+        except Exception as e:
+            logger.error(f"获取location失败: {e}")
+            raise LoginFailedError(f"获取location失败: {e}") from e
+
+    def _get_qrcode_data(self, location_data: Dict[str, Any]) -> Dict[str, Any]:
+        """获取二维码数据
+
+        Args:
+            location_data: location参数
+
+        Returns:
+            Dict[str, Any]: 包含二维码URL和轮询URL的字典
+
+        Raises:
+            LoginFailedError: 获取失败
+        """
+        try:
+            from urllib import parse
+            
+            # 添加额外参数
+            location_data.update({
+                "theme": "",
+                "bizDeviceType": "",
+                "_hasLogo": "false",
+                "_qrsize": "240",
+                "_dc": str(int(time.time() * 1000)),
+            })
+            
+            # 构建URL
+            login_url = self._config.get("LOGIN_URL")
+            url = f"{login_url}/longPolling/loginUrl?" + parse.urlencode(location_data)
+            
+            response = self._client.get(url)
+            response.raise_for_status()
+
+            # 解析响应
+            data = response.text.replace("&&&START&&&", "")
+            import json
+
+            result = json.loads(data)
+
+            if result.get("code") != 0:
+                raise LoginFailedError(f"获取二维码失败: {result.get('desc')}")
+
+            logger.info("二维码数据获取成功")
+            return result
+
+        except Exception as e:
+            logger.error(f"获取二维码数据失败: {e}")
+            raise LoginFailedError(f"获取二维码数据失败: {e}") from e
+
+    def _long_poll_for_scan(self, poll_url: str) -> Dict[str, Any]:
+        """长轮询等待扫码
+
+        Args:
+            poll_url: 轮询URL
+
+        Returns:
+            Dict[str, Any]: 登录结果数据
+
+        Raises:
+            LoginFailedError: 扫码超时或失败
+        """
+        try:
+            logger.info("等待扫码...")
+            # 使用长轮询，超时时间120秒
+            response = self._client.get(poll_url, timeout=120)
+            response.raise_for_status()
+
+            # 解析响应
+            data = response.text.replace("&&&START&&&", "")
+            import json
+
+            result = json.loads(data)
+
+            if result.get("code") != 0:
+                raise LoginFailedError(f"扫码失败: {result.get('desc')}")
+
+            logger.info("扫码成功")
+            return result
+
+        except httpx.TimeoutException:
+            raise LoginFailedError("扫码超时，请重试")
+        except Exception as e:
+            logger.error(f"等待扫码时发生错误: {e}")
+            raise LoginFailedError(f"等待扫码失败: {e}") from e
+
+    def _get_qrcode_url(self) -> str:
+        """获取二维码URL（旧方法，已弃用）
+
+        Returns:
+            str: 二维码URL
+
+        Raises:
+            LoginFailedError: 获取二维码URL失败
+        """
+        try:
+            url = f"{self._config.get('SERVICE_LOGIN_URL')}?sid=xiaomiio&_json=true"
+            response = self._client.get(url)
+            response.raise_for_status()
+
+            # 解析响应（去掉前缀&&&START&&&）
+            data = response.text.replace("&&&START&&&", "")
+            import json
+
+            result = json.loads(data)
+
+            if result.get("code") != 0:
+                raise LoginFailedError(f"获取二维码URL失败: {result.get('desc')}")
+
+            qr_url: str = result["qr"]
+            logger.info("二维码URL获取成功")
+            return qr_url
+
+        except Exception as e:
+            logger.error(f"获取二维码URL失败: {e}")
+            raise LoginFailedError(f"获取二维码URL失败: {e}") from e
+
+    def _display_qrcode(self, url: str) -> None:
+        """在终端显示二维码
+
+        Args:
+            url: 二维码URL
+        """
+        print("\n请使用米家APP扫描以下二维码登录：\n")
+        qr = QRCode()
+        qr.add_data(url)
+        qr.make()
+        qr.print_ascii()
+        print("\n等待扫码...\n")
+
+    def _wait_for_scan(self, qr_url: str, timeout: int = 300) -> Dict[str, Any]:
+        """轮询等待扫码
+
+        Args:
+            qr_url: 二维码URL
+            timeout: 超时时间（秒），默认5分钟
+
+        Returns:
+            Dict[str, Any]: 登录结果数据
+
+        Raises:
+            LoginFailedError: 扫码超时或失败
+        """
+        start_time = time.time()
+        poll_interval = 2  # 每2秒轮询一次
+
+        while time.time() - start_time < timeout:
+            try:
+                # 轮询登录状态
+                check_url = f"{self._config.get('SERVICE_LOGIN_URL')}/check?sid=xiaomiio&_json=true"
+                response = self._client.get(check_url)
+
+                # 解析响应
+                data = response.text.replace("&&&START&&&", "")
+                import json
+
+                result: Dict[str, Any] = json.loads(data)
+
+                # 检查登录状态
+                if result.get("code") == 0:
+                    logger.info("扫码成功")
+                    return result
+                elif result.get("code") == 87001:
+                    # 等待扫码
+                    time.sleep(poll_interval)
+                    continue
+                else:
+                    raise LoginFailedError(f"扫码失败: {result.get('desc')}")
+
+            except LoginFailedError:
+                raise
+            except Exception as e:
+                logger.warning(f"轮询扫码状态时发生错误: {e}")
+                time.sleep(poll_interval)
+
+        raise LoginFailedError("扫码超时，请重试")
+
+    def _get_service_token(self, login_result: Dict[str, Any]) -> Dict[str, Any]:
+        """获取service token
+
+        Args:
+            login_result: 登录结果数据
+
+        Returns:
+            Dict[str, Any]: 包含serviceToken和ssecurity的字典
+
+        Raises:
+            LoginFailedError: 获取service token失败
+        """
+        try:
+            # 从登录结果中提取location
+            location = login_result.get("location")
+            if not location:
+                raise LoginFailedError("登录结果中缺少location字段")
+
+            # 访问location获取service token
+            response = self._client.get(location)
+            response.raise_for_status()
+
+            # 从cookies中提取serviceToken
+            service_token = response.cookies.get("serviceToken")
+            if not service_token:
+                raise LoginFailedError("未能获取serviceToken")
+
+            # 获取ssecurity
+            ssecurity_url = f"{self._config.get('LOGIN_URL')}/pass/serviceLoginAuth2"
+            response = self._client.get(
+                ssecurity_url,
+                params={"sid": "xiaomiio", "serviceToken": service_token},
+            )
+            response.raise_for_status()
+
+            # 解析响应
+            import json
+
+            result = json.loads(response.text.replace("&&&START&&&", ""))
+
+            if result.get("code") != 0:
+                raise LoginFailedError(f"获取ssecurity失败: {result.get('desc')}")
+
+            ssecurity = result.get("ssecurity")
+            if not ssecurity:
+                raise LoginFailedError("未能获取ssecurity")
+
+            logger.info("Service token获取成功")
+            return {"serviceToken": service_token, "ssecurity": ssecurity}
+
+        except Exception as e:
+            logger.error(f"获取service token失败: {e}")
+            raise LoginFailedError(f"获取service token失败: {e}") from e
+
+    def _refresh_service_token(self, old_token: str) -> Dict[str, Any]:
+        """刷新service token
+
+        Args:
+            old_token: 旧的service token
+
+        Returns:
+            Dict[str, Any]: 包含新的serviceToken和ssecurity的字典
+
+        Raises:
+            TokenExpiredError: 刷新失败
+        """
+        try:
+            # 调用刷新API
+            url = f"{self._config.get('LOGIN_URL')}/pass/serviceLoginAuth2"
+            response = self._client.get(url, params={"sid": "xiaomiio", "serviceToken": old_token})
+            response.raise_for_status()
+
+            # 解析响应
+            import json
+
+            result = json.loads(response.text.replace("&&&START&&&", ""))
+
+            if result.get("code") != 0:
+                raise TokenExpiredError(f"刷新token失败: {result.get('desc')}")
+
+            # 提取新的token和ssecurity
+            new_token = result.get("serviceToken", old_token)
+            ssecurity = result.get("ssecurity")
+
+            if not ssecurity:
+                raise TokenExpiredError("刷新响应中缺少ssecurity")
+
+            logger.info("Service token刷新成功")
+            return {"serviceToken": new_token, "ssecurity": ssecurity}
+
+        except Exception as e:
+            logger.error(f"刷新service token失败: {e}")
+            raise TokenExpiredError(f"刷新service token失败: {e}") from e
+
+    def _generate_device_id(self) -> str:
+        """生成设备ID
+
+        Returns:
+            str: UUID格式的设备ID
+        """
+        return str(uuid.uuid4())
+
+    def _generate_user_agent(self) -> str:
+        """生成User-Agent
+
+        Returns:
+            str: User-Agent字符串
+        """
+        return "iOS-14.4-6.0.103-iPhone12,1"
+
+    def _calculate_expires_at(self, token_data: Dict[str, Any], default_days: int = 7) -> datetime:
+        """计算过期时间
+
+        Args:
+            token_data: token数据，可能包含expires_in字段
+            default_days: 默认过期天数，默认7天
+
+        Returns:
+            datetime: 过期时间
+        """
+        # 如果token_data中包含expires_in字段，使用它
+        expires_in = token_data.get("expires_in")
+        if expires_in:
+            return datetime.now() + timedelta(seconds=expires_in)
+
+        # 否则使用默认过期时间
+        return datetime.now() + timedelta(days=default_days)
+
+    def __del__(self) -> None:
+        """析构函数，关闭HTTP客户端"""
+        try:
+            self._client.close()
+        except Exception:
+            pass

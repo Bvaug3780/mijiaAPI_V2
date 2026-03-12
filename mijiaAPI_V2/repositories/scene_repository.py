@@ -1,0 +1,71 @@
+"""场景仓储实现
+
+基于HTTP的场景仓储实现。
+"""
+
+from typing import List
+
+from ..domain.models import Credential, Scene
+from ..infrastructure.http_client import HttpClient
+from .interfaces import ISceneRepository
+
+
+class SceneRepositoryImpl(ISceneRepository):
+    """场景仓储实现
+
+    基于HTTP API的场景仓储实现。
+    """
+
+    def __init__(self, http_client: HttpClient):
+        """初始化场景仓储
+
+        Args:
+            http_client: HTTP客户端
+        """
+        self._http = http_client
+
+    def get_all(self, home_id: str, credential: Credential) -> List[Scene]:
+        """获取家庭下所有场景
+
+        Args:
+            home_id: 家庭ID
+            credential: 用户凭据
+
+        Returns:
+            场景列表
+        """
+        # 从API获取场景列表
+        response = self._http.post("/scene/list", json={"home_id": home_id}, credential=credential)
+
+        # 解析场景列表
+        scene_list = response.get("result", {}).get("scenes", [])
+        scenes = []
+        for scene_data in scene_list:
+            # 映射API字段到领域模型
+            scene = Scene(
+                scene_id=str(scene_data.get("scene_id", "")),
+                name=scene_data.get("name", ""),
+                home_id=home_id,
+                icon=scene_data.get("icon"),
+            )
+            scenes.append(scene)
+
+        return scenes
+
+    def execute(self, scene_id: str, credential: Credential) -> bool:
+        """执行场景
+
+        Args:
+            scene_id: 场景ID
+            credential: 用户凭据
+
+        Returns:
+            执行成功返回True，失败返回False
+        """
+        # 调用API执行场景
+        response = self._http.post(
+            "/scene/execute", json={"scene_id": scene_id}, credential=credential
+        )
+
+        # 检查结果
+        return response.get("code") == 0

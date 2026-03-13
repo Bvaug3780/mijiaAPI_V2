@@ -108,7 +108,7 @@ class ConfigManager:
         """展平嵌套的配置字典
         
         将TOML文件中的嵌套结构转换为扁平的键值对。
-        例如：{"security": {"credential_path": "..."}} -> {"CREDENTIAL_PATH": "..."}
+        例如：{"api": {"base_url": "..."}} -> {"API_BASE_URL": "..."}
         
         Args:
             config: 配置字典
@@ -120,13 +120,12 @@ class ConfigManager:
         result = {}
         
         for key, value in config.items():
-            # 转换为大写并添加前缀
-            full_key = f"{prefix}{key}".upper()
-            
             if isinstance(value, dict):
-                # 递归处理嵌套字典
-                result.update(self._flatten_config(value, f"{key}_"))
+                # 递归处理嵌套字典，累积前缀
+                result.update(self._flatten_config(value, f"{prefix}{key}_"))
             else:
+                # 转换为大写并添加前缀
+                full_key = f"{prefix}{key}".upper()
                 result[full_key] = value
         
         return result

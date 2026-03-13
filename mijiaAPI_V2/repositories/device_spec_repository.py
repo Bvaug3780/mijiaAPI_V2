@@ -370,10 +370,16 @@ class DeviceSpecRepositoryImpl(IDeviceSpecRepository):
             value_range = None
             if "value-range" in prop_data:
                 range_data = prop_data["value-range"]
-                value_range = [range_data.get("min"), range_data.get("max")]
-                # 如果有步长，也添加进去
-                if "step" in range_data:
-                    value_range.append(range_data.get("step"))
+                # 处理两种格式：字典格式和列表格式
+                if isinstance(range_data, dict):
+                    # 字典格式: {"min": 0, "max": 100, "step": 1}
+                    value_range = [range_data.get("min"), range_data.get("max")]
+                    # 如果有步长，也添加进去
+                    if "step" in range_data:
+                        value_range.append(range_data.get("step"))
+                elif isinstance(range_data, list):
+                    # 列表格式: [min, max, step]
+                    value_range = range_data
 
             # 枚举值列表
             value_list = None

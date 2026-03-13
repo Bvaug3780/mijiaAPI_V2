@@ -49,13 +49,54 @@ def main():
     
     print(f"使用设备: {lamp.name} ({lamp.model})\n")
     
+    # 先获取设备规格，确定正确的 siid/piid
+    spec = api.get_device_spec(lamp.model)
+    if not spec or not spec.properties:
+        print("无法获取设备规格，示例无法继续")
+        return
+    
+    # 查找开关、模式和亮度属性
+    power_prop = None
+    mode_prop = None
+    brightness_prop = None
+    
+    for prop in spec.properties:
+        name_lower = prop.name.lower()
+        # 查找开关属性（优先选择可写的）
+        if not power_prop or (prop.is_writable() and not power_prop.is_writable()):
+            if any(keyword in name_lower for keyword in ["switch", "power", "on", "开关"]):
+                power_prop = prop
+        # 查找模式属性
+        if not mode_prop and prop.is_writable():
+            if "mode" in name_lower or "模式" in prop.name:
+                mode_prop = prop
+        # 查找亮度属性
+        if not brightness_prop and prop.is_writable():
+            if any(keyword in name_lower for keyword in ["brightness", "亮度", "level"]):
+                brightness_prop = prop
+    
+    if not power_prop:
+        print("未找到开关属性，示例无法继续")
+        return
+    
+    print(f"找到属性: 开关 (siid={power_prop.siid}, piid={power_prop.piid})")
+    if mode_prop:
+        print(f"找到属性: 模式 (siid={mode_prop.siid}, piid={mode_prop.piid})")
+        if mode_prop.value_list:
+            print(f"  可选模式: {mode_prop.value_list}")
+    if brightness_prop:
+        print(f"找到属性: 亮度 (siid={brightness_prop.siid}, piid={brightness_prop.piid})")
+    print()
+    
     # 1. 批量获取属性
     print("【方法1】批量获取属性")
     try:
         requests = [
-            {"did": lamp.did, "siid": 2, "piid": 1},  # 开关
-            {"did": lamp.did, "siid": 2, "piid": 2},  # 亮度
+            {"did": lamp.did, "siid": power_prop.siid, "piid": power_prop.piid},
         ]
+        if brightness_prop:
+            requests.append({"did": lamp.did, "siid": brightness_prop.siid, "piid": brightness_prop.piid})
+        
         results = api.get_device_properties(requests)
         
         for i, result in enumerate(results):
@@ -71,7 +112,7 @@ def main():
     print("【方法2】设置单个属性")
     try:
         # 设置开关状态为开
-        success = api.control_device(lamp.did, siid=2, piid=1, value=True)
+        success = api.control_device(lamp.did, siid=power_prop.siid, piid=power_prop.piid, value=True)
         if success:
             print("  ✓ 设备已打开")
         else:
@@ -80,50 +121,106 @@ def main():
         print(f"  设置失败: {e}")
     print()
     
-    # 3. 批量设置属性
-    print("【方法3】批量设置属性")
-    try:
-        requests = [
-            {"device_id": lamp.did, "siid": 2, "piid": 1, "value": True},   # 打开
-            {"device_id": lamp.did, "siid": 2, "piid": 2, "value": 80},     # 亮度80%
-        ]
-        results = api.batch_control_devices(requests)
-        
-        for i, result in enumerate(results):
-            if result.get("code") == 0:
-                print(f"  ✓ 属性{i+1}设置成功")
+    # 3. 设置模式属性（如果有）
+    print("【方法3】设置模式属性")
+    if mode_prop and mode_prop.is_writable() and mode_prop.value_list:
+        try:
+            # 获取当前模式
+            requests = [{"did": lamp.did, "siid": mode_prop.siid, "piid": mode_prop.piid}]
+            results = api.get_device_properties(requests)
+            current_mode = results[0].get("value") if results else None
+            
+            if current_mode is not None:
+                print(f"  当前模式: {current_mode}")
+                
+                # 切换到下一个模式
+                mode_list = mode_prop.value_list
+                current_index = mode_list.index(current_mode) if current_mode in mode_list else 0
+                next_mode = mode_list[(current_index + 1) % len(mode_list)]
+                
+                success = api.control_device(lamp.did, siid=mode_prop.siid, piid=mode_prop.piid, value=next_mode)
+                if success:
+                    print(f"  ✓ 已切换到模式 {next_mode}")
+                    # 切换回原模式
+                    api.control_device(lamp.did, siid=mode_prop.siid, piid=mode_prop.piid, value=current_mode)
+                    print(f"  ✓ 已恢复到模式 {current_mode}")
+                else:
+                    print(f"  ✗ 模式切换失败")
             else:
-                print(f"  ✗ 属性{i+1}设置失败 (code={result.get('code')})")
-    except (DeviceError, MijiaAPIException) as e:
-        print(f"  批量设置失败: {e}")
+                print("  ✗ 无法获取当前模式")
+        except (DeviceError, MijiaAPIException) as e:
+            print(f"  设置失败: {e}")
+    elif brightness_prop and brightness_prop.is_writable():
+        # 如果有亮度属性，使用批量设置
+        try:
+            requests = [
+                {"device_id": lamp.did, "siid": power_prop.siid, "piid": power_prop.piid, "value": True},
+                {"device_id": lamp.did, "siid": brightness_prop.siid, "piid": brightness_prop.piid, "value": 80},
+            ]
+            results = api.batch_control_devices(requests)
+            
+            for i, result in enumerate(results):
+                if result.get("code") == 0:
+                    print(f"  ✓ 属性{i+1}设置成功")
+                else:
+                    print(f"  ✗ 属性{i+1}设置失败 (code={result.get('code')})")
+        except (DeviceError, MijiaAPIException) as e:
+            print(f"  批量设置失败: {e}")
+    else:
+        print("  跳过：未找到可控制的模式或亮度属性")
     print()
     
     # 4. 调用设备动作
     print("【方法4】调用设备动作")
-    try:
-        # 注意：不同设备的动作ID不同，需要查看设备规格
-        # 这里使用一个通用的示例，可能不适用于所有设备
-        result = api.call_device_action(lamp.did, siid=2, aiid=1, params={})
-        print(f"  动作执行结果: {result}")
-    except (DeviceError, MijiaAPIException) as e:
-        print(f"  动作执行失败: {e}")
+    if spec.actions:
+        # 查找一个不需要参数的简单动作
+        simple_action = None
+        for action in spec.actions:
+            # 优先选择亮度相关的动作
+            if "bright" in action.name.lower() or "亮度" in action.name:
+                if not action.parameters:  # 不需要参数
+                    simple_action = action
+                    break
+        
+        # 如果没找到亮度动作，找其他不需要参数的动作
+        if not simple_action:
+            for action in spec.actions:
+                if not action.parameters:
+                    simple_action = action
+                    break
+        
+        if simple_action:
+            try:
+                print(f"  尝试调用动作: {simple_action.name} (siid={simple_action.siid}, aiid={simple_action.aiid})")
+                result = api.call_device_action(lamp.did, siid=simple_action.siid, aiid=simple_action.aiid, params={})
+                if result.get("code") == 0:
+                    print(f"  ✓ 动作执行成功")
+                else:
+                    print(f"  ✗ 动作执行失败 (code={result.get('code')})")
+            except (DeviceError, MijiaAPIException) as e:
+                print(f"  ✗ 动作执行失败: {e}")
+        else:
+            print("  跳过：所有动作都需要参数")
+            print(f"  提示：设备有 {len(spec.actions)} 个动作，可使用 'python scripts/show_device_spec.py' 查看详情")
+    else:
+        print("  跳过：设备没有可用的动作")
     print()
     
-    # 5. 查看设备规格
-    print("【方法5】查看设备规格")
-    spec = api.get_device_spec(lamp.model)
-    if spec:
-        print(f"  设备型号: {spec.model}")
-        print(f"  设备名称: {spec.name}")
-        print(f"  属性数量: {len(spec.properties)}")
-        print(f"  操作数量: {len(spec.actions)}")
-        
-        if spec.properties:
-            print("\n  前3个属性:")
-            for prop in spec.properties[:3]:
-                print(f"    - {prop.name} (siid={prop.siid}, piid={prop.piid})")
-    else:
-        print("  未找到设备规格")
+    # 5. 查看设备规格摘要
+    print("【方法5】查看设备规格摘要")
+    print(f"  设备型号: {spec.model}")
+    print(f"  设备名称: {spec.name}")
+    print(f"  属性数量: {len(spec.properties)}")
+    print(f"  操作数量: {len(spec.actions)}")
+    
+    # 显示可写属性
+    writable_props = [p for p in spec.properties if p.is_writable()]
+    if writable_props:
+        print(f"\n  可写属性 ({len(writable_props)} 个):")
+        for prop in writable_props[:5]:  # 只显示前5个
+            print(f"    - {prop.name} (siid={prop.siid}, piid={prop.piid})")
+        if len(writable_props) > 5:
+            print(f"    ... 还有 {len(writable_props) - 5} 个")
     print()
     
     print("=== 示例完成 ===")

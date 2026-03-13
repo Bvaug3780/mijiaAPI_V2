@@ -203,7 +203,7 @@ class TestCallAction:
         # 验证HTTP调用
         mock_http_client.post.assert_called_once_with(
             "/miotspec/action",
-            json={"did": "device1", "siid": 2, "aiid": 1, "in": {"param": "value"}},
+            json={"params": {"did": "device1", "siid": 2, "aiid": 1, "value": ["value"]}},
             credential=test_credential,
         )
 

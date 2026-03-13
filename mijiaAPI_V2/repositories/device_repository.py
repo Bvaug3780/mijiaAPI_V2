@@ -278,16 +278,32 @@ class DeviceRepositoryImpl(IDeviceRepository):
             device_id: 设备ID
             siid: 服务ID
             aiid: 操作ID
-            params: 操作参数
+            params: 操作参数字典，会被转换为参数值列表
             credential: 用户凭据
 
         Returns:
             操作结果
         """
-        # 调用API执行操作
+        # 将参数字典转换为参数值列表
+        # 如果 params 是空字典，则使用空列表
+        # 如果 params 有值，则提取值列表
+        param_values = list(params.values()) if params else []
+        
+        # 构建请求参数（使用旧版本的格式）
+        request_data = {
+            "did": device_id,
+            "siid": siid,
+            "aiid": aiid
+        }
+        
+        # 只有当有参数时才添加 value 字段
+        if param_values:
+            request_data["value"] = param_values
+        
+        # 调用API执行操作（使用 params 包装）
         response = self._http.post(
             "/miotspec/action",
-            json={"did": device_id, "siid": siid, "aiid": aiid, "in": params},
+            json={"params": request_data},
             credential=credential,
         )
 

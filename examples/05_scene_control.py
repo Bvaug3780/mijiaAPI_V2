@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""示例05：场景控制
+"""示例05：智能控制
 
-演示场景相关操作：
-- 获取场景列表
-- 交互式选择并执行场景
-- 支持跳过场景执行
-- 支持连续执行多个场景
+演示智能相关操作：
+- 获取智能列表
+- 交互式选择并执行智能
+- 支持跳过智能执行
+- 支持连续执行多个智能
 """
 
 import sys
@@ -20,7 +20,7 @@ from mijiaAPI_V2 import create_api_client_from_file
 
 def main():
     """主函数"""
-    print("=== 示例05：场景控制 ===\n")
+    print("=== 示例05：智能控制 ===\n")
     
     # 创建API客户端
     api = create_api_client_from_file()
@@ -34,28 +34,28 @@ def main():
     home = homes[0]
     print(f"当前家庭: {home.name}\n")
     
-    # 1. 获取场景列表
-    print("【获取场景列表】")
+    # 1. 获取智能列表
+    print("【获取智能列表】")
     scenes = api.get_scenes(home.id)
     
     if not scenes:
-        print("该家庭没有场景")
+        print("该家庭没有智能")
         return
     
-    print(f"找到 {len(scenes)} 个场景:\n")
+    print(f"找到 {len(scenes)} 个智能:\n")
     for i, scene in enumerate(scenes, 1):
         print(f"{i}. {scene.name}")
-        print(f"   场景ID: {scene.scene_id}")
+        print(f"   智能ID: {scene.scene_id}")
         print(f"   家庭ID: {scene.home_id}")
         if scene.icon:
             print(f"   图标: {scene.icon}")
         print()
     
-    # 2. 执行场景
-    print("【执行场景】")
+    # 2. 执行智能
+    print("【执行智能】")
     while True:
         try:
-            choice = input(f"\n请选择要执行的场景 (1-{len(scenes)})，或输入 0 跳过: ").strip()
+            choice = input(f"\n请选择要执行的智能 (1-{len(scenes)})，或输入 0 跳过: ").strip()
             
             if not choice:
                 continue
@@ -63,24 +63,24 @@ def main():
             choice_num = int(choice)
             
             if choice_num == 0:
-                print("跳过场景执行")
+                print("跳过智能执行")
                 break
             
             if 1 <= choice_num <= len(scenes):
                 scene = scenes[choice_num - 1]
-                print(f"\n执行场景: {scene.name}")
+                print(f"\n执行智能: {scene.name}")
                 
                 try:
                     success = api.execute_scene(scene.scene_id, home.id)
                     if success:
-                        print("✓ 场景执行成功")
+                        print("✓ 智能执行成功")
                     else:
-                        print("✗ 场景执行失败")
+                        print("✗ 智能执行失败")
                 except Exception as e:
-                    print(f"✗ 场景执行失败: {e}")
+                    print(f"✗ 智能执行失败: {e}")
                 
-                # 询问是否继续执行其他场景
-                continue_choice = input("\n是否继续执行其他场景? (y/n): ").strip().lower()
+                # 询问是否继续执行其他智能
+                continue_choice = input("\n是否继续执行其他智能? (y/n): ").strip().lower()
                 if continue_choice != 'y':
                     break
             else:
@@ -94,9 +94,9 @@ def main():
     
     print("\n=== 示例完成 ===")
     print("\n提示：")
-    print("- 场景需要在米家APP中预先创建")
-    print("- 场景执行是异步的，可能需要几秒钟才能生效")
-    print("- 可以通过米家APP查看场景执行结果")
+    print("- 智能需要在米家APP中预先创建")
+    print("- 智能执行是异步的，可能需要几秒钟才能生效")
+    print("- 可以通过米家APP查看智能执行结果")
 
 
 if __name__ == "__main__":

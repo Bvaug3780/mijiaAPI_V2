@@ -173,10 +173,10 @@ class SmartHomeAutomation:
             print(f"✗ 获取属性失败: {e.message}")
     
     def execute_scene(self, scene_name: str):
-        """执行场景"""
-        print(f"\n【执行场景】{scene_name}")
+        """执行智能"""
+        print(f"\n【执行智能】{scene_name}")
         
-        # 获取场景列表
+        # 获取智能列表
         try:
             if not self.homes:
                 print("✗ 没有可用的家庭")
@@ -185,7 +185,7 @@ class SmartHomeAutomation:
             home = self.homes[0]
             scenes = self.api.get_scenes(home.id)
             
-            # 查找场景
+            # 查找智能
             scene = None
             for s in scenes:
                 if scene_name in s.name:
@@ -193,19 +193,19 @@ class SmartHomeAutomation:
                     break
             
             if not scene:
-                print(f"✗ 未找到场景: {scene_name}")
-                print(f"可用场景: {[s.name for s in scenes]}")
+                print(f"✗ 未找到智能: {scene_name}")
+                print(f"可用智能: {[s.name for s in scenes]}")
                 return
             
-            # 执行场景
+            # 执行智能
             success = self.api.execute_scene(scene.scene_id)
             if success:
-                print(f"✓ 场景 '{scene.name}' 执行成功")
+                print(f"✓ 智能 '{scene.name}' 执行成功")
             else:
-                print(f"✗ 场景执行失败")
+                print(f"✗ 智能执行失败")
                 
         except Exception as e:
-            print(f"✗ 执行场景失败: {e}")
+            print(f"✗ 执行智能失败: {e}")
     
     def run(self):
         """运行自动化流程"""
@@ -231,7 +231,7 @@ class SmartHomeAutomation:
         # 5. 获取特定设备状态（示例）
         # self.get_device_status("台灯")
         
-        # 6. 执行场景（示例）
+        # 6. 执行智能（示例）
         # self.execute_scene("回家模式")
         
         print("\n" + "=" * 60)

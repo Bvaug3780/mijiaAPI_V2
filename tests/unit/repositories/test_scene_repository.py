@@ -1,4 +1,4 @@
-"""场景仓储单元测试"""
+"""智能仓储单元测试"""
 
 from datetime import datetime, timedelta
 from unittest.mock import Mock
@@ -18,7 +18,7 @@ def mock_http_client():
 
 @pytest.fixture
 def scene_repository(mock_http_client):
-    """创建场景仓储实例"""
+    """创建智能仓储实例"""
     return SceneRepositoryImpl(mock_http_client)
 
 
@@ -40,7 +40,7 @@ class TestGetAll:
     """测试get_all方法"""
 
     def test_get_all_success(self, scene_repository, mock_http_client, test_credential):
-        """测试成功获取场景列表"""
+        """测试成功获取智能列表"""
         # 准备API响应
         api_response = {
             "code": 0,
@@ -88,7 +88,7 @@ class TestGetAll:
         )
 
     def test_get_all_empty_list(self, scene_repository, mock_http_client, test_credential):
-        """测试获取空场景列表"""
+        """测试获取空智能列表"""
         # 准备API响应（空列表）
         api_response = {"code": 0, "result": {"manual_scene_info_list": []}}
         mock_http_client.post.return_value = api_response
@@ -190,7 +190,7 @@ class TestGetAll:
         assert scenes[0].name == ""  # 默认值
 
     def test_get_all_multiple_homes(self, scene_repository, mock_http_client, test_credential):
-        """测试不同家庭的场景列表"""
+        """测试不同家庭的智能列表"""
         # 准备API响应
         api_response = {
             "code": 0,
@@ -227,7 +227,7 @@ class TestExecute:
     """测试execute方法"""
 
     def test_execute_success(self, scene_repository, mock_http_client, test_credential):
-        """测试成功执行场景"""
+        """测试成功执行智能"""
         # 准备API响应（成功）
         api_response = {"code": 0, "message": "success"}
         mock_http_client.post.return_value = api_response
@@ -252,9 +252,9 @@ class TestExecute:
         )
 
     def test_execute_failure(self, scene_repository, mock_http_client, test_credential):
-        """测试执行场景失败"""
+        """测试执行智能失败"""
         # 准备API响应（失败）
-        api_response = {"code": -1, "message": "场景不存在"}
+        api_response = {"code": -1, "message": "智能不存在"}
         mock_http_client.post.return_value = api_response
 
         # 调用方法
@@ -277,16 +277,16 @@ class TestExecute:
         )
 
     def test_execute_different_scenes(self, scene_repository, mock_http_client, test_credential):
-        """测试执行不同的场景"""
+        """测试执行不同的智能"""
         # 准备API响应
         api_response = {"code": 0, "message": "success"}
         mock_http_client.post.return_value = api_response
 
-        # 执行场景1
+        # 执行智能1
         result1 = scene_repository.execute("scene1", "home1", test_credential)
         assert result1 is True
 
-        # 执行场景2
+        # 执行智能2
         result2 = scene_repository.execute("scene2", "home1", test_credential)
         assert result2 is True
 
@@ -297,7 +297,7 @@ class TestExecute:
         assert calls[1][1]["json"]["scene_id"] == "scene2"
 
     def test_execute_with_error_code(self, scene_repository, mock_http_client, test_credential):
-        """测试执行场景返回错误码"""
+        """测试执行智能返回错误码"""
         # 准备API响应（各种错误码）
         error_codes = [1, -1, 404, 500]
 
@@ -316,8 +316,8 @@ class TestIntegration:
     """集成测试"""
 
     def test_get_all_and_execute(self, scene_repository, mock_http_client, test_credential):
-        """测试获取场景列表后执行场景"""
-        # 准备获取场景列表的响应
+        """测试获取智能列表后执行智能"""
+        # 准备获取智能列表的响应
         list_response = {
             "code": 0,
             "result": {
@@ -331,17 +331,17 @@ class TestIntegration:
             },
         }
 
-        # 准备执行场景的响应
+        # 准备执行智能的响应
         execute_response = {"code": 0, "message": "success"}
 
         # 设置mock返回值
         mock_http_client.post.side_effect = [list_response, execute_response]
 
-        # 获取场景列表
+        # 获取智能列表
         scenes = scene_repository.get_all("home1", test_credential)
         assert len(scenes) == 1
 
-        # 执行第一个场景
+        # 执行第一个智能
         result = scene_repository.execute(scenes[0].scene_id, "home1", test_credential)
         assert result is True
 
@@ -349,7 +349,7 @@ class TestIntegration:
         assert mock_http_client.post.call_count == 2
 
     def test_multiple_users_isolation(self, scene_repository, mock_http_client):
-        """测试多用户场景隔离"""
+        """测试多用户智能隔离"""
         # 创建两个不同的凭据
         credential1 = Credential(
             user_id="user1",
@@ -375,10 +375,10 @@ class TestIntegration:
         api_response = {"code": 0, "result": {"manual_scene_info_list": []}}
         mock_http_client.post.return_value = api_response
 
-        # 用户1获取场景
+        # 用户1获取智能
         scene_repository.get_all("home1", credential1)
 
-        # 用户2获取场景
+        # 用户2获取智能
         scene_repository.get_all("home2", credential2)
 
         # 验证HTTP调用使用了不同的凭据

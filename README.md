@@ -285,12 +285,12 @@ mijiaAPI_V2/
 │   ├── interfaces.py      # 仓储接口
 │   ├── device_repository.py    # 设备仓储
 │   ├── home_repository.py      # 家庭仓储
-│   ├── scene_repository.py     # 场景仓储
+│   ├── scene_repository.py     # 智能仓储
 │   └── device_spec_repository.py  # 设备规格仓储
 ├── services/               # 服务层
 │   ├── auth_service.py    # 认证服务
 │   ├── device_service.py  # 设备服务
-│   ├── scene_service.py   # 场景服务
+│   ├── scene_service.py   # 智能服务
 │   └── statistics_service.py  # 统计服务
 ├── api_client.py          # API客户端（MijiaAPI、AsyncMijiaAPI）
 └── factory.py             # 依赖注入工厂
@@ -305,7 +305,7 @@ mijiaAPI_V2/
 2. **快速开始** (`02_quick_start.py`) - 基本的设备获取和控制
 3. **设备控制** (`03_device_control.py`) - 各种设备控制方法
 4. **设备规格查询** (`04_device_spec.py`) - 查看设备属性和操作
-5. **场景控制** (`05_scene_control.py`) - 获取和执行场景
+5. **智能控制** (`05_scene_control.py`) - 获取和执行智能
 
 ### 高级示例
 6. **批量操作** (`06_batch_operations.py`) - 批量控制设备，性能优化

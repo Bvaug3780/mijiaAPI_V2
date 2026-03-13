@@ -89,16 +89,16 @@ class IDeviceRepository(ABC):
 
 
 class ISceneRepository(ABC):
-    """场景仓储接口"""
+    """智能仓储接口"""
 
     @abstractmethod
     def get_all(self, home_id: str, credential: Credential) -> List[Scene]:
-        """获取家庭下所有场景"""
+        """获取家庭下所有智能"""
         pass
 
     @abstractmethod
     def execute(self, scene_id: str, home_id: str, credential: Credential) -> bool:
-        """执行场景"""
+        """执行智能"""
         pass
 
 

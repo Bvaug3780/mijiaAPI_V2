@@ -5,7 +5,7 @@
 模块：
 - auth_service: 认证服务
 - device_service: 设备服务
-- scene_service: 场景服务
+- scene_service: 智能服务
 - statistics_service: 统计服务
 """
 

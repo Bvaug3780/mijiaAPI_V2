@@ -146,7 +146,7 @@ def example_real_device():
             "properties": {
                 "delay-off-enable": "延时关闭开关",
                 "double-click-enable": "双击功能开关",
-                "scene-mode": "场景模式",
+                "scene-mode": "智能模式",
             }
         }
         

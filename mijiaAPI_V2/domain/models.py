@@ -168,14 +168,14 @@ class DeviceAction(BaseModel):
 
 
 class Scene(BaseModel):
-    """场景实体"""
+    """智能实体"""
 
     model_config = ConfigDict(frozen=False)
 
-    scene_id: str = Field(description="场景ID")
-    name: str = Field(description="场景名称")
+    scene_id: str = Field(description="智能ID")
+    name: str = Field(description="智能名称")
     home_id: str = Field(description="所属家庭ID")
-    icon: Optional[str] = Field(default=None, description="场景图标")
+    icon: Optional[str] = Field(default=None, description="智能图标")
 
 
 class ConsumableItem(BaseModel):

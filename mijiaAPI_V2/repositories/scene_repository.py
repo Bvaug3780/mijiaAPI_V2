@@ -1,6 +1,6 @@
-"""场景仓储实现
+"""智能仓储实现
 
-基于HTTP的场景仓储实现。
+基于HTTP的智能仓储实现。
 """
 
 from typing import List
@@ -11,13 +11,13 @@ from .interfaces import ISceneRepository
 
 
 class SceneRepositoryImpl(ISceneRepository):
-    """场景仓储实现
+    """智能仓储实现
 
-    基于HTTP API的场景仓储实现。
+    基于HTTP API的智能仓储实现。
     """
 
     def __init__(self, http_client: HttpClient):
-        """初始化场景仓储
+        """初始化智能仓储
 
         Args:
             http_client: HTTP客户端
@@ -25,16 +25,16 @@ class SceneRepositoryImpl(ISceneRepository):
         self._http = http_client
 
     def get_all(self, home_id: str, credential: Credential) -> List[Scene]:
-        """获取家庭下所有场景
+        """获取家庭下所有智能
 
         Args:
             home_id: 家庭ID
             credential: 用户凭据
 
         Returns:
-            场景列表
+            智能列表
         """
-        # 从API获取场景列表
+        # 从API获取智能列表
         response = self._http.post(
             "/appgateway/miot/appsceneservice/AppSceneService/GetSimpleSceneList",
             json={
@@ -46,7 +46,7 @@ class SceneRepositoryImpl(ISceneRepository):
             credential=credential
         )
 
-        # 解析场景列表
+        # 解析智能列表
         scene_list = response.get("result", {}).get("manual_scene_info_list", [])
         scenes = []
         for scene_data in scene_list:
@@ -62,17 +62,17 @@ class SceneRepositoryImpl(ISceneRepository):
         return scenes
 
     def execute(self, scene_id: str, home_id: str, credential: Credential) -> bool:
-        """执行场景
+        """执行智能
 
         Args:
-            scene_id: 场景ID
+            scene_id: 智能ID
             home_id: 家庭ID
             credential: 用户凭据
 
         Returns:
             执行成功返回True，失败返回False
         """
-        # 调用API执行场景
+        # 调用API执行智能
         response = self._http.post(
             "/appgateway/miot/appsceneservice/AppSceneService/NewRunScene",
             json={

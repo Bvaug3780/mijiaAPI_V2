@@ -62,7 +62,7 @@ def sample_spec_data():
                     },
                 ],
                 "actions": [
-                    {"iid": 1, "description": "切换场景"},
+                    {"iid": 1, "description": "切换智能"},
                 ],
             }
         ],
@@ -201,7 +201,7 @@ class TestDeviceSpecRepositoryImpl:
 
         # 验证操作
         action = spec.actions[0]
-        assert action.name == "切换场景"
+        assert action.name == "切换智能"
         assert action.siid == 2
         assert action.aiid == 1
 

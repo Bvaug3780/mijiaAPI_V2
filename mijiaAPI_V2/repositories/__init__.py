@@ -7,7 +7,7 @@
 - device_repository: 设备仓储实现（同步）
 - async_device_repository: 设备仓储实现（异步）
 - home_repository: 家庭仓储实现
-- scene_repository: 场景仓储实现
+- scene_repository: 智能仓储实现
 - device_spec_repository: 设备规格仓储实现
 """
 

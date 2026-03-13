@@ -30,10 +30,10 @@
    - 使用中文翻译
    - 根据规格控制设备
 
-5. **[05_scene_control.py](05_scene_control.py)** - 场景控制
-   - 获取场景列表
-   - 执行场景
-   - 按家庭筛选场景
+5. **[05_scene_control.py](05_scene_control.py)** - 智能控制
+   - 获取智能列表
+   - 执行智能
+   - 按家庭筛选智能
 
 ### 高级示例
 
@@ -119,7 +119,7 @@ uv run python examples/03_device_control.py
 ### 进阶学习
 
 4. 查看 `04_device_spec.py`，理解设备规格
-5. 学习 `05_scene_control.py`，掌握场景控制
+4. 学习 `05_scene_control.py`，掌握智能控制
 6. 优化 `06_batch_operations.py`，提升性能
 
 ### 高级应用

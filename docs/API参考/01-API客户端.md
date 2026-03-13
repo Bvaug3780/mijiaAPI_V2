@@ -29,7 +29,7 @@ def __init__(
 **参数**：
 - `credential`: 用户凭据对象
 - `device_service`: 设备服务实例
-- `scene_service`: 场景服务实例
+- `scene_service`: 智能服务实例
 - `statistics_service`: 统计服务实例（可选）
 - `home_repository`: 家庭仓储实例（可选）
 
@@ -274,11 +274,11 @@ for i, result in enumerate(results):
         print(f"请求{i+1}失败")
 ```
 
-### 场景管理
+### 智能管理
 
 #### get_scenes()
 
-获取指定家庭下的所有场景。
+获取指定家庭下的所有智能。
 
 ```python
 def get_scenes(self, home_id: str) -> List[Scene]
@@ -288,7 +288,7 @@ def get_scenes(self, home_id: str) -> List[Scene]
 - `home_id`: 家庭ID
 
 **返回**：
-- `List[Scene]`: 场景列表
+- `List[Scene]`: 智能列表
 
 **异常**：
 - `TokenExpiredError`: 凭据已过期
@@ -303,14 +303,14 @@ for scene in scenes:
 
 #### execute_scene()
 
-执行指定场景。
+执行指定智能。
 
 ```python
 def execute_scene(self, scene_id: str) -> bool
 ```
 
 **参数**：
-- `scene_id`: 场景ID
+- `scene_id`: 智能ID
 
 **返回**：
 - `bool`: 是否成功
@@ -323,7 +323,7 @@ def execute_scene(self, scene_id: str) -> bool
 ```python
 success = api.execute_scene(scene_id="scene_123")
 if success:
-    print("场景执行成功")
+    print("智能执行成功")
 ```
 
 ### 统计信息

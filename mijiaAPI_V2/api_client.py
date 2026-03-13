@@ -32,7 +32,7 @@ class MijiaAPI:
         Args:
             credential: 用户凭据对象
             device_service: 设备服务
-            scene_service: 场景服务
+            scene_service: 智能服务
             statistics_service: 统计服务（可选）
             home_repository: 家庭仓储（可选）
             cache_manager: 缓存管理器（可选）
@@ -238,13 +238,13 @@ class MijiaAPI:
         return results
 
     def get_scenes(self, home_id: str) -> List[Scene]:
-        """获取场景列表
+        """获取智能列表
 
         Args:
             home_id: 家庭ID
 
         Returns:
-            场景列表
+            智能列表
 
         Raises:
             TokenExpiredError: 凭据已过期
@@ -253,10 +253,10 @@ class MijiaAPI:
         return self._scene_service.get_scenes(home_id, self._credential)
 
     def execute_scene(self, scene_id: str, home_id: str) -> bool:
-        """执行场景
+        """执行智能
 
         Args:
-            scene_id: 场景ID
+            scene_id: 智能ID
             home_id: 家庭ID
 
         Returns:
@@ -405,7 +405,7 @@ class AsyncMijiaAPI:
         Args:
             credential: 用户凭据对象
             device_service: 设备服务
-            scene_service: 场景服务
+            scene_service: 智能服务
             statistics_service: 统计服务（可选）
             home_repository: 家庭仓储（可选）
             cache_manager: 缓存管理器（可选）
@@ -627,13 +627,13 @@ class AsyncMijiaAPI:
         return results
 
     async def get_scenes(self, home_id: str) -> List[Scene]:
-        """异步获取场景列表
+        """异步获取智能列表
 
         Args:
             home_id: 家庭ID
 
         Returns:
-            场景列表
+            智能列表
         """
         import asyncio
         return await asyncio.to_thread(
@@ -641,10 +641,10 @@ class AsyncMijiaAPI:
         )
 
     async def execute_scene(self, scene_id: str, home_id: str) -> bool:
-        """异步执行场景
+        """异步执行智能
 
         Args:
-            scene_id: 场景ID
+            scene_id: 智能ID
             home_id: 家庭ID
 
         Returns:

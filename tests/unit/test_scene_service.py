@@ -32,7 +32,7 @@ def sample_credential() -> Credential:
 
 @pytest.fixture
 def sample_scenes() -> list[Scene]:
-    """创建示例场景列表"""
+    """创建示例智能列表"""
     return [
         Scene(
             scene_id="scene_001",
@@ -92,7 +92,7 @@ def test_get_scenes_returns_empty_list_when_no_scenes(
     mock_scene_repo: Mock,
     sample_credential: Credential,
 ) -> None:
-    """测试get_scenes在没有场景时返回空列表"""
+    """测试get_scenes在没有智能时返回空列表"""
     # 设置mock返回空列表
     mock_scene_repo.get_all.return_value = []
 
@@ -145,12 +145,12 @@ def test_get_scenes_with_different_home_ids(
     sample_credential: Credential,
 ) -> None:
     """测试get_scenes使用不同的home_id"""
-    # 为不同家庭创建不同的场景
+    # 为不同家庭创建不同的智能
     home1_scenes = [
-        Scene(scene_id="s1", name="场景1", home_id="home_001"),
+        Scene(scene_id="s1", name="智能1", home_id="home_001"),
     ]
     home2_scenes = [
-        Scene(scene_id="s2", name="场景2", home_id="home_002"),
+        Scene(scene_id="s2", name="智能2", home_id="home_002"),
     ]
 
     # 第一次调用
@@ -178,7 +178,7 @@ def test_execute_scene_with_different_scene_ids(
     # 设置mock返回值
     mock_scene_repo.execute.return_value = True
 
-    # 执行多个场景
+    # 执行多个智能
     scene_ids = ["scene_001", "scene_002", "scene_003"]
     home_id = "home_123"
     for scene_id in scene_ids:

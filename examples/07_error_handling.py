@@ -35,7 +35,7 @@ def example_authentication_error():
     
     try:
         # 尝试从不存在的文件加载凭据
-        api = create_api_client_from_file(Path("nonexistent.json"))
+        api = create_api_client_from_file(credential_path=Path("nonexistent.json"))
         homes = api.get_homes()
         
     except FileNotFoundError:

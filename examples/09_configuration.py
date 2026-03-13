@@ -25,7 +25,7 @@ def example_load_config():
     print("=== 方式1：加载配置文件 ===\n")
     
     # 加载默认配置文件
-    config = create_config_manager(Path("configs/default.toml"))
+    config = create_config_manager(config_path=Path("configs/default.toml"))
     
     print("配置加载成功")
     print(f"  API基础URL: {config.get('API_BASE_URL')}")

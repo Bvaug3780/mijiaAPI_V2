@@ -104,16 +104,17 @@ def example_save_credential():
             return
         
         # 保存到自定义位置
-        custom_path = Path("my_credentials.json")
+        custom_path = "my_credentials.json"
         auth_service.save_credential(credential, custom_path)
         print(f"✓ 凭据已保存到: {custom_path}")
         
         # 从自定义位置加载
-        api2 = create_api_client_from_file(custom_path)
+        api2 = create_api_client_from_file(Path(custom_path))
         print(f"✓ 从自定义位置加载成功")
+        print(f"  用户ID: {api2.credential.user_id}")
         
         # 清理示例文件
-        custom_path.unlink()
+        Path(custom_path).unlink()
         print(f"✓ 清理示例文件")
         
     except FileNotFoundError:

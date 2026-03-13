@@ -72,7 +72,8 @@ class TranslationManager:
             raise FileNotFoundError(f"翻译文件不存在: {file_path}")
         
         with open(file_path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            data: Dict[str, Dict[str, str]] = json.load(f)
+            return data
     
     def _merge_translations(self, new_translations: Dict[str, Dict[str, str]]) -> None:
         """合并新的翻译到现有翻译中

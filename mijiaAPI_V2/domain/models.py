@@ -45,6 +45,7 @@ class Credential(BaseModel):
     user_id: str = Field(description="用户ID")
     service_token: str = Field(description="服务Token")
     ssecurity: str = Field(description="安全密钥")
+    pass_token: Optional[str] = Field(default="", description="通行Token，用于刷新凭据")
     c_user_id: str = Field(description="Cookie用户ID")
     device_id: str = Field(description="设备ID")
     user_agent: str = Field(description="User-Agent")

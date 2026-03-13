@@ -161,17 +161,41 @@ def example_refresh_credential():
             print("✗ 凭据文件不存在")
             return
         
+        # 检查是否有passToken
+        if not credential.pass_token:
+            print("✗ 凭据缺少passToken，无法刷新")
+            print("  提示：这是旧版本的凭据，请重新登录以获取新凭据")
+            print("  删除凭据文件后运行方式1重新登录")
+            return
+        
         if credential.is_expired():
             print("凭据已过期，尝试刷新...")
             try:
-                # 注意：当前版本可能不支持刷新，需要重新登录
-                print("✗ 凭据已过期，请重新登录")
-                print("  提示：删除凭据文件后运行方式1重新登录")
+                new_credential = auth_service.refresh_credential(credential)
+                auth_service.save_credential(new_credential)
+                print("✓ 凭据刷新成功")
+                print(f"  新的过期时间: {new_credential.expires_at}")
+                print(f"  剩余有效期: {new_credential.expires_in()} 秒")
             except Exception as e:
                 print(f"✗ 刷新失败: {e}")
+                print("  提示：凭据可能已完全失效，请重新登录")
         else:
             print("✓ 凭据仍然有效，无需刷新")
             print(f"  剩余有效期: {credential.expires_in()} 秒")
+            
+            # 演示主动刷新以延长有效期
+            print("\n演示主动刷新以延长有效期...")
+            try:
+                new_credential = auth_service.refresh_credential(credential)
+                print("✓ 刷新成功")
+                print(f"  旧的过期时间: {credential.expires_at}")
+                print(f"  新的过期时间: {new_credential.expires_at}")
+                
+                time_extended = (new_credential.expires_at - credential.expires_at).total_seconds()
+                print(f"  延长时间: {time_extended:.0f} 秒 ({time_extended/3600:.2f} 小时)")
+                print("\n  提示：通过定期刷新，可以保持凭据长期有效")
+            except Exception as e:
+                print(f"✗ 刷新失败: {e}")
         
     except FileNotFoundError:
         print("✗ 凭据文件不存在")

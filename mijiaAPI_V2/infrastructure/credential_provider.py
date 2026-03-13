@@ -78,6 +78,7 @@ class CredentialProvider:
                 user_id=str(login_result["userId"]),
                 service_token=service_token,
                 ssecurity=login_result["ssecurity"],
+                pass_token=login_result.get("passToken", ""),  # 添加passToken
                 c_user_id=str(login_result.get("cUserId", login_result["userId"])),  # cUserId
                 device_id=self._generate_device_id(),
                 user_agent=self._generate_user_agent(),
@@ -107,15 +108,22 @@ class CredentialProvider:
         """
         logger.info(f"刷新凭据，用户ID: {credential.user_id}")
 
-        try:
-            # 使用现有的service token刷新
-            new_token_data = self._refresh_service_token(credential.service_token)
+        # 检查是否有passToken
+        if not credential.pass_token:
+            raise TokenExpiredError(
+                "凭据缺少passToken，无法刷新。请重新登录以获取包含passToken的新凭据。"
+            )
 
-            # 创建新的凭据对象
+        try:
+            # 使用现有的凭据信息刷新
+            new_token_data = self._refresh_service_token(credential)
+
+            # 创建新的凭据对象，保留passToken
             new_credential = Credential(
                 user_id=credential.user_id,
                 service_token=new_token_data["serviceToken"],
                 ssecurity=new_token_data["ssecurity"],
+                pass_token=credential.pass_token,  # 保留原有的passToken
                 c_user_id=credential.c_user_id,
                 device_id=credential.device_id,
                 user_agent=credential.user_agent,
@@ -427,11 +435,14 @@ class CredentialProvider:
             logger.error(f"获取service token失败: {e}")
             raise LoginFailedError(f"获取service token失败: {e}") from e
 
-    def _refresh_service_token(self, old_token: str) -> Dict[str, Any]:
+    def _refresh_service_token(self, credential: Credential) -> Dict[str, Any]:
         """刷新service token
+        
+        通过重新访问serviceLogin接口并携带现有的passToken来刷新凭据。
+        这是小米账号系统支持的正确刷新方式。
 
         Args:
-            old_token: 旧的service token
+            credential: 当前的凭据对象，包含passToken等信息
 
         Returns:
             Dict[str, Any]: 包含新的serviceToken和ssecurity的字典
@@ -440,28 +451,63 @@ class CredentialProvider:
             TokenExpiredError: 刷新失败
         """
         try:
-            # 调用刷新API
-            url = f"{self._config.get('LOGIN_URL')}/pass/serviceLoginAuth2"
-            response = self._client.get(url, params={"sid": "xiaomiio", "serviceToken": old_token})
+            # 构建serviceLogin URL，使用sid=mijia（与米家APP一致）
+            service_login_url = f"{self._config.get('LOGIN_URL')}/pass/serviceLogin?_json=true&sid=mijia&_locale=zh_CN"
+            
+            # 构建请求头，携带现有的认证信息
+            headers = {
+                "User-Agent": credential.user_agent,
+                "Connection": "keep-alive",
+                "Accept-Encoding": "gzip",
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Cookie": f"deviceId={credential.device_id};"
+                          f"passToken={credential.pass_token};"
+                          f"userId={credential.user_id};"
+                          f"cUserId={credential.c_user_id};"
+            }
+            
+            # 请求serviceLogin接口
+            response = self._client.get(service_login_url, headers=headers)
             response.raise_for_status()
-
+            
             # 解析响应
             import json
-
             result = json.loads(response.text.replace("&&&START&&&", ""))
-
-            if result.get("code") != 0:
-                raise TokenExpiredError(f"刷新token失败: {result.get('desc')}")
-
-            # 提取新的token和ssecurity
-            new_token = result.get("serviceToken", old_token)
-            ssecurity = result.get("ssecurity")
-
-            if not ssecurity:
-                raise TokenExpiredError("刷新响应中缺少ssecurity")
-
-            logger.info("Service token刷新成功")
-            return {"serviceToken": new_token, "ssecurity": ssecurity}
+            
+            logger.debug(f"刷新响应: code={result.get('code')}, desc={result.get('desc')}")
+            
+            # 检查响应状态
+            if result.get("code") == 0:
+                # code=0表示token仍然有效，可以直接刷新
+                location = result.get("location")
+                if not location:
+                    raise TokenExpiredError("刷新响应中缺少location字段")
+                
+                # 访问location URL完成刷新
+                location_response = self._client.get(location, headers={"User-Agent": credential.user_agent})
+                
+                if location_response.status_code == 200:
+                    # 从响应中提取新的serviceToken
+                    new_service_token = location_response.cookies.get("serviceToken")
+                    if not new_service_token:
+                        # 如果没有新token，使用旧token
+                        new_service_token = credential.service_token
+                    
+                    # 提取新的ssecurity
+                    new_ssecurity = result.get("ssecurity")
+                    if not new_ssecurity:
+                        raise TokenExpiredError("刷新响应中缺少ssecurity")
+                    
+                    logger.info("Service token刷新成功")
+                    return {
+                        "serviceToken": new_service_token,
+                        "ssecurity": new_ssecurity
+                    }
+                else:
+                    raise TokenExpiredError(f"访问location失败: HTTP {location_response.status_code}")
+            
+            # 如果code不为0，说明需要重新登录
+            raise TokenExpiredError(f"凭据已失效，需要重新登录: {result.get('desc', '未知错误')}")
 
         except Exception as e:
             logger.error(f"刷新service token失败: {e}")

